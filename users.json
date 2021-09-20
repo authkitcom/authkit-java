@@ -1,0 +1,26 @@
+[
+  {
+    "sub": "a",
+    "given_name": "FirstA",
+    "family_name": "LastA",
+    "email": "emailA@domain.com",
+    "roles": ["role1", "role2"],
+    "permissions": ["permission1", "permission2"]
+  },
+  {
+    "sub": "b",
+    "given_name": "FirstB",
+    "family_name": "LastB",
+    "email": "emailB@domain.com",
+    "roles": ["role1", "role2"],
+    "permissions": ["permission1", "permission2"]
+  },
+  {
+    "sub": "c",
+    "given_name": "FirstC",
+    "family_name": "LastC",
+    "email": "emailC@domain.com",
+    "roles": ["role1", "role2"],
+    "permissions": ["permission1", "permission2"]
+  }
+]

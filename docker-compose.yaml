@@ -1,0 +1,15 @@
+version: '3.1'
+
+services:
+
+  engine:
+    image: harbor.authkit.com/authkit/enginestub:0.6.0
+    restart: always
+    environment:
+      STUB_HTTP_HOST: 0.0.0.0
+      STUB_URL: http://localhost:9996
+      STUB_USERS: /etc/users.json
+    volumes:
+      - ./users.json:/etc/users.json
+    ports:
+      - 9996:8080
