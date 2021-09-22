@@ -90,7 +90,7 @@ public class DefaultAuthenticatorTest {
 
         var pa = new AuthkitPrincipal();
 
-        pa.setSubject("a");
+        pa.setSub("a");
         pa.setIssuer(ISSUER);
         pa.setAudience(AUDIENCE);
         pa.setFamilyName("LastA");
@@ -99,7 +99,7 @@ public class DefaultAuthenticatorTest {
 
         var pb = new AuthkitPrincipal();
 
-        pb.setSubject("b");
+        pb.setSub("b");
         pb.setIssuer(ISSUER);
         pb.setAudience(AUDIENCE);
 
@@ -125,7 +125,7 @@ public class DefaultAuthenticatorTest {
 
         var pa2 = new AuthkitPrincipal();
 
-        pa2.setSubject("a");
+        pa2.setSub("a");
         pa2.setIssuer(ISSUER);
         pa2.setAudience(AUDIENCE);
         pa2.setFamilyName("LastA");

@@ -6,7 +6,7 @@ import java.util.*;
 public class AuthkitPrincipal implements Principal {
 
     private String issuer;
-    private String subject;
+    private String sub;
     private String audience;
 
     private String email;
@@ -35,12 +35,12 @@ public class AuthkitPrincipal implements Principal {
         this.issuer = issuer;
     }
 
-    public String getSubject() {
-        return subject;
+    public String getSub() {
+        return sub;
     }
 
-    public void setSubject(String subject) {
-        this.subject = subject;
+    public void setSub(String sub) {
+        this.sub = sub;
     }
 
     public String getAudience() {
@@ -197,19 +197,19 @@ public class AuthkitPrincipal implements Principal {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AuthkitPrincipal that = (AuthkitPrincipal) o;
-        return Objects.equals(issuer, that.issuer) && Objects.equals(subject, that.subject) && Objects.equals(audience, that.audience) && Objects.equals(email, that.email) && Objects.equals(emailVerified, that.emailVerified) && Objects.equals(familyName, that.familyName) && Objects.equals(gender, that.gender) && Objects.equals(givenName, that.givenName) && Objects.equals(groups, that.groups) && Objects.equals(middleName, that.middleName) && Objects.equals(name, that.name) && Objects.equals(nickname, that.nickname) && Objects.equals(permissions, that.permissions) && Objects.equals(phoneNumber, that.phoneNumber) && Objects.equals(phoneNumberVerified, that.phoneNumberVerified) && Objects.equals(preferredUsername, that.preferredUsername) && Objects.equals(roles, that.roles) && Objects.equals(updatedAt, that.updatedAt) && Objects.equals(metadata, that.metadata) && Objects.equals(extraClaims, that.extraClaims);
+        return Objects.equals(issuer, that.issuer) && Objects.equals(sub, that.sub) && Objects.equals(audience, that.audience) && Objects.equals(email, that.email) && Objects.equals(emailVerified, that.emailVerified) && Objects.equals(familyName, that.familyName) && Objects.equals(gender, that.gender) && Objects.equals(givenName, that.givenName) && Objects.equals(groups, that.groups) && Objects.equals(middleName, that.middleName) && Objects.equals(name, that.name) && Objects.equals(nickname, that.nickname) && Objects.equals(permissions, that.permissions) && Objects.equals(phoneNumber, that.phoneNumber) && Objects.equals(phoneNumberVerified, that.phoneNumberVerified) && Objects.equals(preferredUsername, that.preferredUsername) && Objects.equals(roles, that.roles) && Objects.equals(updatedAt, that.updatedAt) && Objects.equals(metadata, that.metadata) && Objects.equals(extraClaims, that.extraClaims);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(issuer, subject, audience, email, emailVerified, familyName, gender, givenName, groups, middleName, name, nickname, permissions, phoneNumber, phoneNumberVerified, preferredUsername, roles, updatedAt, metadata, extraClaims);
+        return Objects.hash(issuer, sub, audience, email, emailVerified, familyName, gender, givenName, groups, middleName, name, nickname, permissions, phoneNumber, phoneNumberVerified, preferredUsername, roles, updatedAt, metadata, extraClaims);
     }
 
     @Override
     public String toString() {
         return "AuthkitPrincipal{" +
             "issuer='" + issuer + '\'' +
-            ", subject='" + subject + '\'' +
+            ", subject='" + sub + '\'' +
             ", audience='" + audience + '\'' +
             ", email='" + email + '\'' +
             ", emailVerified=" + emailVerified +

@@ -8,11 +8,8 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -176,7 +173,7 @@ public class DefaultAuthenticator implements Authenticator {
             AuthkitPrincipal p = new AuthkitPrincipal();
 
             p.setIssuer(claims.getIssuer());
-            p.setSubject(claims.getSubject());
+            p.setSub(claims.getSubject());
             p.setAudience(claims.getAudience());
             // We assume claims are in access token
             p.setPermissions(orDefaultSet(claims.get(CLAIM_PERMISSIONS)));
