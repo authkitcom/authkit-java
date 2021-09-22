@@ -1,15 +1,26 @@
 package com.authkit;
 
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import kong.unirest.HttpResponse;
+import kong.unirest.HttpStatus;
 import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.netty.http.client.HttpClient;
+
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DefaultAuthenticatorTest {
+
+    private static final Gson GSON = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy
+        .LOWER_CASE_WITH_UNDERSCORES).create();
 
     private Config config;
     private DefaultAuthenticator unit;
@@ -38,25 +49,34 @@ public class DefaultAuthenticatorTest {
     @Test
     public void authenticate() {
 
-        HttpResponse<JsonNode> resp = Unirest.get("http://localhost:9996/authorize?sub=a&json=true").asJson();
+        HttpClient client = HttpClient.create();
 
-        if (resp.getStatus() != 200) {
-            throw new RuntimeException("Authorize status code: " + resp.getStatus());
-        }
+        var resp = client.get()
+            .uri("http://localhost:9996/authorize?sub=a&json=true")
+            .responseSingle((r, b) -> {
+                if (r.status().code() == 200) {
+                    return b.asString();
+                } else {
+                    throw new AuthkitException("Unable to get code from server");
+                }
+            }).map(s -> GSON.fromJson(s, Map.class))
+            .block();
 
-        String code = resp.getBody().getObject().getString("code");
+        String code = (String) resp.get("code");
 
-        HttpResponse<JsonNode> tokenResp = Unirest.post("http://localhost:9996/oauth/token")
-                .field("code", code)
-                .field("audience", audience)
-                .field("redirect_uri", "http://localhost:8080")
-                .asJson();
+        var tokenResp = client.post().uri("http://localhost:9996/oauth/token").sendForm((r,f) -> {
+                f.attr("code", code);
+                f.attr("audience", audience);
+                f.attr("redirect_uri", "http://localhost:8080");
+        }).responseSingle((r, b) -> {
+            if (r.status().code() == 200) {
+                return b.asString();
+            } else {
+                throw new AuthkitException("Unable to get code from server");
+            }
+        }).map(s -> GSON.fromJson(s, Map.class)).block();
 
-        if (tokenResp.getStatus() != 200) {
-            throw new RuntimeException("Token status code: " + resp.getStatus());
-        }
-
-        String accessToken = tokenResp.getBody().getObject().getString("access_token");
+        String accessToken = (String) tokenResp.get("access_token");
 
         AuthkitPrincipal got = unit.authenticate(accessToken);
 
