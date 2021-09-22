@@ -1,22 +1,31 @@
 package com.authkit;
 
 import java.security.Principal;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class AuthkitPrincipal implements Principal {
 
     private String issuer;
     private String subject;
     private String audience;
-    private String givenName;
-    private String familyName;
+
     private String email;
+    private Boolean emailVerified;
+    private String familyName;
+    private String gender;
+    private String givenName;
+    private Set<String> groups = new HashSet<>();
+    private String middleName;
+    private String name;
+    private String nickname;
+    private Set<String> permissions = new HashSet<>();
+    private String phoneNumber;
+    private Boolean phoneNumberVerified;
     private String preferredUsername;
-    private Set<String> roles;
-    private Set<String> permissions;
-    private Map<String, Object> metadata;
+    private Set<String> roles = new HashSet<>();
+    private Long updatedAt;
+    private Map<String, Object> metadata = new HashMap<String, Object>();
+    private Map<String, Object> extraClaims = new HashMap<String, Object>();
 
     public String getIssuer() {
         return issuer;
@@ -42,12 +51,20 @@ public class AuthkitPrincipal implements Principal {
         this.audience = audience;
     }
 
-    public String getGivenName() {
-        return givenName;
+    public String getEmail() {
+        return email;
     }
 
-    public void setGivenName(String givenName) {
-        this.givenName = givenName;
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Boolean getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(Boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public String getFamilyName() {
@@ -58,12 +75,81 @@ public class AuthkitPrincipal implements Principal {
         this.familyName = familyName;
     }
 
-    public String getEmail() {
-        return email;
+    public String getGender() {
+        return gender;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public String getGivenName() {
+        return givenName;
+    }
+
+    public void setGivenName(String givenName) {
+        this.givenName = givenName;
+    }
+
+    public Set<String> getGroups() {
+        return groups;
+    }
+
+    public void setGroups(Set<String> groups) {
+        this.groups = groups;
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
+    }
+
+    @Override
+    public String getName() {
+        return preferredUsername;
+    }
+
+    public String getClaimName() {
+        return name;
+    }
+
+    public void setClaimName(String name) {
+        this.name = name;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public Set<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Set<String> permissions) {
+        this.permissions = permissions;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public Boolean getPhoneNumberVerified() {
+        return phoneNumberVerified;
+    }
+
+    public void setPhoneNumberVerified(Boolean phoneNumberVerified) {
+        this.phoneNumberVerified = phoneNumberVerified;
     }
 
     public String getPreferredUsername() {
@@ -82,17 +168,12 @@ public class AuthkitPrincipal implements Principal {
         this.roles = roles;
     }
 
-    public Set<String> getPermissions() {
-        return permissions;
+    public Long getUpdatedAt() {
+        return updatedAt;
     }
 
-    public void setPermissions(Set<String> permissions) {
-        this.permissions = permissions;
-    }
-
-    @Override
-    public String getName() {
-        return preferredUsername;
+    public void setUpdatedAt(Long updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Map<String, Object> getMetadata() {
@@ -103,25 +184,50 @@ public class AuthkitPrincipal implements Principal {
         this.metadata = metadata;
     }
 
+    public Map<String, Object> getExtraClaims() {
+        return extraClaims;
+    }
+
+    public void setExtraClaims(Map<String, Object> extraClaims) {
+        this.extraClaims = extraClaims;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        AuthkitPrincipal principal = (AuthkitPrincipal) o;
-        return Objects.equals(issuer, principal.issuer) &&
-                Objects.equals(subject, principal.subject) &&
-                Objects.equals(audience, principal.audience) &&
-                Objects.equals(givenName, principal.givenName) &&
-                Objects.equals(familyName, principal.familyName) &&
-                Objects.equals(email, principal.email) &&
-                Objects.equals(preferredUsername, principal.preferredUsername) &&
-                Objects.equals(roles, principal.roles) &&
-                Objects.equals(permissions, principal.permissions) &&
-                Objects.equals(metadata, principal.metadata);
+        AuthkitPrincipal that = (AuthkitPrincipal) o;
+        return Objects.equals(issuer, that.issuer) && Objects.equals(subject, that.subject) && Objects.equals(audience, that.audience) && Objects.equals(email, that.email) && Objects.equals(emailVerified, that.emailVerified) && Objects.equals(familyName, that.familyName) && Objects.equals(gender, that.gender) && Objects.equals(givenName, that.givenName) && Objects.equals(groups, that.groups) && Objects.equals(middleName, that.middleName) && Objects.equals(name, that.name) && Objects.equals(nickname, that.nickname) && Objects.equals(permissions, that.permissions) && Objects.equals(phoneNumber, that.phoneNumber) && Objects.equals(phoneNumberVerified, that.phoneNumberVerified) && Objects.equals(preferredUsername, that.preferredUsername) && Objects.equals(roles, that.roles) && Objects.equals(updatedAt, that.updatedAt) && Objects.equals(metadata, that.metadata) && Objects.equals(extraClaims, that.extraClaims);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(issuer, subject, audience, givenName, familyName, email, preferredUsername, roles, permissions, metadata);
+        return Objects.hash(issuer, subject, audience, email, emailVerified, familyName, gender, givenName, groups, middleName, name, nickname, permissions, phoneNumber, phoneNumberVerified, preferredUsername, roles, updatedAt, metadata, extraClaims);
+    }
+
+    @Override
+    public String toString() {
+        return "AuthkitPrincipal{" +
+            "issuer='" + issuer + '\'' +
+            ", subject='" + subject + '\'' +
+            ", audience='" + audience + '\'' +
+            ", email='" + email + '\'' +
+            ", emailVerified=" + emailVerified +
+            ", familyName='" + familyName + '\'' +
+            ", gender='" + gender + '\'' +
+            ", givenName='" + givenName + '\'' +
+            ", groups=" + groups +
+            ", middleName='" + middleName + '\'' +
+            ", name='" + name + '\'' +
+            ", nickname='" + nickname + '\'' +
+            ", permissions=" + permissions +
+            ", phoneNumber='" + phoneNumber + '\'' +
+            ", phoneNumberVerified=" + phoneNumberVerified +
+            ", preferredUsername='" + preferredUsername + '\'' +
+            ", roles=" + roles +
+            ", updatedAt=" + updatedAt +
+            ", metadata=" + metadata +
+            ", extraClaims=" + extraClaims +
+            '}';
     }
 }

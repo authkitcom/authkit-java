@@ -3,24 +3,29 @@
     "sub": "a",
     "given_name": "FirstA",
     "family_name": "LastA",
-    "email": "emailA@domain.com",
-    "roles": ["role1", "role2"],
-    "permissions": ["permission1", "permission2"]
+    "email": "emailA@domain.com"
   },
   {
     "sub": "b",
-    "given_name": "FirstB",
-    "family_name": "LastB",
-    "email": "emailB@domain.com",
+    "email": "email@domain.com",
+    "email_verified": true,
+    "family_name": "Family",
+    "gender": "M",
+    "given_name": "Given",
+    "groups": ["group1", "group2"],
+    "middle_name": "E",
+    "name": "Given E Family",
+    "nickname": "nick",
+    "permissions": ["permission1", "permission2"],
+    "phone_number": "360-555-1212",
+    "phone_number_verified": true,
+    "preferred_username": "gfamily",
     "roles": ["role1", "role2"],
-    "permissions": ["permission1", "permission2"]
-  },
-  {
-    "sub": "c",
-    "given_name": "FirstC",
-    "family_name": "LastC",
-    "email": "emailC@domain.com",
-    "roles": ["role1", "role2"],
-    "permissions": ["permission1", "permission2"]
+    "updated_at": 10000,
+    "metadata": {
+      "um1": "umv1",
+      "um2": 12345678
+    }
   }
+
 ]

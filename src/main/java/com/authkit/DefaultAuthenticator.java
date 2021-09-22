@@ -1,22 +1,21 @@
 package com.authkit;
 
-import com.authkit.Authenticator;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.jsonwebtoken.*;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
-
-import static com.authkit.Util.required;
 
 public class DefaultAuthenticator implements Authenticator {
 
@@ -25,12 +24,44 @@ public class DefaultAuthenticator implements Authenticator {
 
     private static final Set<String> RESERVED_CLAIMS = new HashSet<String>();
 
+    // TODO - Enum would be better here
+    private static final String CLAIM_SUB = "sub";
+    private static final String CLAIM_EMAIL = "email";
+    private static final String CLAIM_EMAIL_VERIFIED = "email_verified";
+    private static final String CLAIM_FAMILY_NAME = "family_name";
+    private static final String CLAIM_GENDER = "gender";
+    private static final String CLAIM_GIVEN_NAME = "given_name";
+    private static final String CLAIM_GROUPS = "groups";
+    private static final String CLAIM_MIDDLE_NAME = "middle_name";
+    private static final String CLAIM_NAME = "name";
+    private static final String CLAIM_NICKNAME = "nickname";
+    private static final String CLAIM_PERMISSIONS = "permissions";
+    private static final String CLAIM_PHONE_NUMBER ="phone_number";
+    private static final String CLAIM_PHONE_NUMBER_VERIFIED = "phone_number_verified";
+    private static final String CLAIM_PREFERRED_USERNAME = "preferred_username";
+    private static final String CLAIM_ROLES = "roles";
+    private static final String CLAIM_UPDATED_AT = "updated_at";
+    private static final String CLAIM_METADATA = "metadata";
+
     static {
-        RESERVED_CLAIMS.add("email");
-        RESERVED_CLAIMS.add("family_name");
-        RESERVED_CLAIMS.add("given_name");
-        RESERVED_CLAIMS.add("roles");
-        RESERVED_CLAIMS.add("permissions");
+
+        RESERVED_CLAIMS.add(CLAIM_SUB);
+        RESERVED_CLAIMS.add(CLAIM_EMAIL);
+        RESERVED_CLAIMS.add(CLAIM_EMAIL_VERIFIED);
+        RESERVED_CLAIMS.add(CLAIM_FAMILY_NAME);
+        RESERVED_CLAIMS.add(CLAIM_GENDER);
+        RESERVED_CLAIMS.add(CLAIM_GIVEN_NAME);
+        RESERVED_CLAIMS.add(CLAIM_GROUPS);
+        RESERVED_CLAIMS.add(CLAIM_MIDDLE_NAME);
+        RESERVED_CLAIMS.add(CLAIM_NAME);
+        RESERVED_CLAIMS.add(CLAIM_NICKNAME);
+        RESERVED_CLAIMS.add(CLAIM_PERMISSIONS);
+        RESERVED_CLAIMS.add(CLAIM_PHONE_NUMBER);
+        RESERVED_CLAIMS.add(CLAIM_PHONE_NUMBER_VERIFIED);
+        RESERVED_CLAIMS.add(CLAIM_PREFERRED_USERNAME);
+        RESERVED_CLAIMS.add(CLAIM_ROLES);
+        RESERVED_CLAIMS.add(CLAIM_UPDATED_AT);
+        RESERVED_CLAIMS.add(CLAIM_METADATA);
     }
 
     public static class OpenIdConfiguration {
@@ -62,133 +93,188 @@ public class DefaultAuthenticator implements Authenticator {
         private String x5t;
     }
 
-    // Visible for testing
-    OpenIdConfiguration openIdConfiguration;
-    Jwks jwks;
-    PublicKey publicKey;
-    JwtParser jwtParser;
+    private static class ParserAndUserinfo {
+
+        private final JwtParser parser;
+        private final String userinfoEndpoint;
+
+        private ParserAndUserinfo(JwtParser parser, String userinfoEndpoint) {
+            this.parser = parser;
+            this.userinfoEndpoint = userinfoEndpoint;
+        }
+    }
+
+    private static class Tuple<T1, T2> {
+        private final T1 value1;
+        private final T2 value2;
+
+        private Tuple(T1 value1, T2 value2) {
+            this.value1 = value1;
+            this.value2 = value2;
+        }
+    }
+
+    private final String issuer;
+    private final String audience;
+    private final HttpClient client;
 
     public DefaultAuthenticator(Config config) {
 
-        loadOpenIdConfig(config.getIssuer());
-        loadCertificates();
-
-        JwtParserBuilder builder = Jwts.parserBuilder().setSigningKey(publicKey)
-                .requireIssuer(openIdConfiguration.issuer);
-
-        if (config.getAudience() != null) {
-            builder.requireAudience(config.getAudience());
-        }
-
-        jwtParser = builder.build();
+        this.issuer = config.getIssuer();
+        this.audience = config.getAudience();
+        this.client = HttpClient.create();
     }
 
-    private void loadOpenIdConfig(String issuer) {
+    private Publisher<ParserAndUserinfo> getParserAndUserinfo() {
+        return client.get().uri(issuer + "/.well-known/openid-configuration").responseSingle((r, b) -> {
+                if (r.status().code() == 200) {
+                    return b.asInputStream();
+                } else {
+                    // TODO - Want some better logging here
+                    throw new AuthkitException("unable to load openid-configuration, code: " + r.status().code());
+                }
+            }).map(i -> GSON.fromJson(new InputStreamReader(i), OpenIdConfiguration.class))
+            .flatMap(oidc -> client.get().uri(oidc.jwksUri).responseSingle((r, b) -> {
+                if (r.status().code() == 200) {
+                    return b.asInputStream().map(i -> new Tuple<>(i, oidc.userinfoEndpoint));
+                } else {
+                    // TODO - Want some better logging here
+                    throw new AuthkitException("unable to load jwks, code: " + r.status().code());
+                }
+            }).map(i -> new Tuple<>(GSON.fromJson(new InputStreamReader(i.value1), Jwks.class), i.value2)))
+            .map(j -> {
+                try {
+                    String input = j.value1.keys[0].x5c[0];
+                    byte[] inputBytes = Base64.getDecoder().decode(input);
+                    var fact = CertificateFactory.getInstance("X.509");
+                    ByteArrayInputStream is = new ByteArrayInputStream (inputBytes);
+                    X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
+                    return new Tuple<>(cer.getPublicKey(), j.value2);
+                } catch (Exception e) {
+                    throw new AuthkitException(e);
+                }
+            }).map(pk -> {
 
-        openIdConfiguration = loadObjectFromUrl(issuer + "/.well-known/openid-configuration",
-                OpenIdConfiguration.class, null);
-        jwks = loadObjectFromUrl(openIdConfiguration.jwksUri, Jwks.class, null);
-    }
+                JwtParserBuilder builder = Jwts.parserBuilder().setSigningKey(pk.value1)
+                    .requireIssuer(issuer);
 
-    private void loadCertificates() {
+                if (audience != null) {
+                    builder.requireAudience(audience);
+                }
 
-        try {
-
-            String input = jwks.keys[0].x5c[0];
-            byte[] inputBytes = Base64.getDecoder().decode(input);
-
-            CertificateFactory fact = CertificateFactory.getInstance("X.509");
-            ByteArrayInputStream is = new ByteArrayInputStream (inputBytes);
-            X509Certificate cer = (X509Certificate) fact.generateCertificate(is);
-            publicKey = cer.getPublicKey();
-
-        } catch (Exception e) {
-            throw new AuthkitException(e);
-        }
-    }
+                return new ParserAndUserinfo(builder.build(), pk.value2);
+            });
+    };
 
     @Override
-    public AuthkitPrincipal authenticate(String token) {
+    public Publisher<AuthkitPrincipal> authenticate(final String token) {
 
-        Jws<Claims> jws = jwtParser.parseClaimsJws(token);
+        return Mono.from(getParserAndUserinfo()).map(j -> {
+            var jws = j.parser.parseClaimsJws(token);
+            var claims = jws.getBody();
 
-        Claims claims = jws.getBody();
+            AuthkitPrincipal p = new AuthkitPrincipal();
 
-        AuthkitPrincipal p = new AuthkitPrincipal();
+            p.setIssuer(claims.getIssuer());
+            p.setSubject(claims.getSubject());
+            p.setAudience(claims.getAudience());
+            // We assume claims are in access token
+            p.setPermissions(orDefaultSet(claims.get(CLAIM_PERMISSIONS)));
+            p.setRoles(orDefaultSet(claims.get(CLAIM_ROLES)));
+            p.setGroups(orDefaultSet(claims.get(CLAIM_GROUPS)));
 
-        p.setSubject(claims.getSubject());
-        p.setAudience(claims.getAudience());
+            // TODO - Set other values from the access token here
 
-        // TODO - This is called way too many times
-        Map<String, ?> userinfo = loadObjectFromUrl(openIdConfiguration.userinfoEndpoint, Map.class, token);
-
-        p.setEmail((String) userinfo.get("email"));
-        p.setFamilyName((String) userinfo.get("family_name"));
-        p.setGivenName((String) userinfo.get("given_name"));
-        p.setIssuer(claims.getIssuer());
-        p.setPermissions(stringArrayToStringSetClaim(claims, "permissions"));
-        p.setRoles(stringArrayToStringSetClaim(claims, "roles"));
-        p.setMetadata(new HashMap<String, Object>());
-
-        for (Map.Entry<String, ?> e : userinfo.entrySet()) {
-            if (! RESERVED_CLAIMS.contains(e.getKey())) {
-                p.getMetadata().put(e.getKey(), e.getValue());
+            return new Tuple<>(p, j.userinfoEndpoint);
+        }).flatMap(t -> client.headers(h -> h.add("Authorization", "Bearer " + token)).get().uri(t.value2).responseSingle((r, b) -> {
+            if (r.status().code() == 200) {
+                return b.asInputStream().map(i -> new Tuple<>(i, t.value1));
+            } else {
+                // TODO - Want some better logging here
+                throw new AuthkitException("unable to load userinfo, code: " + r.status().code());
             }
-        }
+        })).map(t -> {
 
-        return p;
+            var userinfo = GSON.fromJson(new InputStreamReader(t.value1), HashMap.class);
+            var p = t.value2;
+
+            p.setEmail((String) userinfo.get(CLAIM_EMAIL));
+            p.setEmailVerified((Boolean) userinfo.get(CLAIM_EMAIL_VERIFIED));
+            p.setFamilyName((String) userinfo.get(CLAIM_FAMILY_NAME));
+            p.setGender((String) userinfo.get(CLAIM_GENDER));
+            p.setGivenName((String) userinfo.get(CLAIM_GIVEN_NAME));
+            p.setMiddleName((String) userinfo.get(CLAIM_MIDDLE_NAME));
+            p.setClaimName((String) userinfo.get(CLAIM_NAME));
+            p.setNickname((String) userinfo.get(CLAIM_NICKNAME));
+            p.setPhoneNumber((String) userinfo.get(CLAIM_PHONE_NUMBER));
+            p.setPhoneNumberVerified((Boolean) userinfo.get(CLAIM_PHONE_NUMBER_VERIFIED));
+            p.setPreferredUsername((String) userinfo.get(CLAIM_PREFERRED_USERNAME));
+            p.setUpdatedAt(toLong((Double) userinfo.get(CLAIM_UPDATED_AT)));
+            p.setMetadata(orDefaultMap(userinfo.get(CLAIM_METADATA)));
+
+            if (p.getPermissions().isEmpty()) {
+                p.setPermissions(orDefaultSet(userinfo.get(CLAIM_PERMISSIONS)));
+            }
+            if (p.getGroups().isEmpty()) {
+                p.setGroups(orDefaultSet(userinfo.get(CLAIM_GROUPS)));
+            }
+            if (p.getRoles().isEmpty()) {
+                p.setRoles(orDefaultSet(userinfo.get(CLAIM_ROLES)));
+            }
+
+            userinfo.forEach((k, v) -> {
+                var key = (String) k;
+                if (! RESERVED_CLAIMS.contains(k)) {
+                    p.getExtraClaims().put(key, v);
+                }
+            });
+
+            return p;
+
+        });
+
     }
 
-    private Set<String> stringArrayToStringSetClaim(Claims claims, String name) {
+    private static Long toLong(Double input) {
 
-        Set<String> claim = new HashSet<String>();
+        if (input == null) {
+            return null;
+        } else {
+            return input.longValue();
+        }
+
+    }
+
+    private static Set<String> stringArrayToStringSetClaim(Claims claims, String name) {
 
         ArrayList<String> raw = claims.get(name, ArrayList.class);
 
         if (raw == null) {
-            return null;
+            return new HashSet<>();
         }
 
-        for (String c : raw) {
-            claim.add(c);
-        }
-
-        return claim;
+        return new HashSet<>(raw);
     }
 
-    private <T> T loadObjectFromUrl(String url, Class<T> objectType, String token)  {
+    private static Set<String> orDefaultSet(Object input) {
 
-        try {
-
-            URL _url = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) _url.openConnection();
-            con.setRequestMethod("GET");
-            if (token != null) {
-                con.setRequestProperty("Authorization", "Bearer " + token);
+        if (input != null) {
+            var result = new HashSet<String>();
+            for (var el :((List<String>) input)) {
+                result.add(el);
             }
-            con.connect();
+            return result;
+        } else {
+            return Set.of();
+        }
+    }
 
-            int status = con.getResponseCode();
+    private Map<String, Object> orDefaultMap(Object input) {
 
-            switch (status) {
-                case 200:
-                case 201:
-                    BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        sb.append(line+"\n");
-                    }
-
-                    br.close();
-
-                    return GSON.fromJson(sb.toString(), objectType);
-                default:
-                    throw new AuthkitException("Invalid status code: " + status);
-            }
-
-        } catch (Exception e) {
-            throw new AuthkitException(e);
+        if (input != null) {
+            return (Map<String, Object>) input;
+        } else {
+            return Map.of();
         }
     }
 }
