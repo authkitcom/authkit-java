@@ -68,14 +68,15 @@ public class DefaultAuthenticatorTest {
         String code = (String) resp.get("code");
 
         var tokenResp = client.post().uri(ISSUER + "/oauth/token").sendForm((r,f) -> {
-                f.attr("code", code);
-                f.attr("audience", AUDIENCE);
-                f.attr("redirect_uri", "http://localhost:8080");
+            f.attr("grant_type", "authorization_code")
+            .attr("code", code)
+            .attr("audience", AUDIENCE)
+            .attr("redirect_uri", "http://localhost:8080");
         }).responseSingle((r, b) -> {
             if (r.status().code() == 200) {
                 return b.asInputStream();
             } else {
-                throw new AuthkitException("Unable to get retrieve token from server");
+                throw new AuthkitException("Unable to get token from server");
             }
         }).map(i -> GSON.fromJson(new InputStreamReader(i), Map.class)).block();
 

@@ -1,21 +1,30 @@
 package com.authkit;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.jsonwebtoken.*;
 import org.reactivestreams.Publisher;
+import reactor.cache.CacheMono;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 import reactor.netty.http.client.HttpClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.util.*;
 
 public class DefaultAuthenticator implements Authenticator {
 
+    /*
+    TODO - unit test missing audience / mismatch audience
+    TODO - test failure to retrieve data
+     */
     private static final Gson GSON = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy
             .LOWER_CASE_WITH_UNDERSCORES).create();
 
@@ -61,6 +70,15 @@ public class DefaultAuthenticator implements Authenticator {
         RESERVED_CLAIMS.add(CLAIM_METADATA);
     }
 
+    private static class MinimalHeader {
+        private String kid;
+    }
+
+    private static class MinimalBody {
+        private String iss;
+        private String aud;
+    }
+
     public static class OpenIdConfiguration {
         private String authorizationEndpoint;
         private String[] grantTypesSupported;
@@ -90,12 +108,12 @@ public class DefaultAuthenticator implements Authenticator {
         private String x5t;
     }
 
-    private static class ParserAndUserinfo {
+    private static class ParserAndUserinfoEndpoint {
 
         private final JwtParser parser;
         private final String userinfoEndpoint;
 
-        private ParserAndUserinfo(JwtParser parser, String userinfoEndpoint) {
+        private ParserAndUserinfoEndpoint(JwtParser parser, String userinfoEndpoint) {
             this.parser = parser;
             this.userinfoEndpoint = userinfoEndpoint;
         }
@@ -115,14 +133,41 @@ public class DefaultAuthenticator implements Authenticator {
     private final String audience;
     private final HttpClient client;
 
+    private final Cache<String, AuthkitPrincipal> principalCache = Caffeine.newBuilder()
+        .maximumSize(10_000)
+        .expireAfterWrite(Duration.ofMinutes(120))
+        .build();
+
+    private final Cache<String, ParserAndUserinfoEndpoint> keyIdAndUserinfoCache = Caffeine.newBuilder()
+        .maximumSize(100)
+        .expireAfterWrite(Duration.ofMinutes(120))
+        .build();
+
     public DefaultAuthenticator(Config config) {
 
+        // TODO - Test with and without audience
         this.issuer = config.getIssuer();
         this.audience = config.getAudience();
         this.client = HttpClient.create();
     }
 
-    private Publisher<ParserAndUserinfo> getParserAndUserinfo() {
+    /**
+     return Mono.from(getParserAndUserinfo())*
+     * @param keyId keyId to extract
+     * @return
+     */
+    private Mono<ParserAndUserinfoEndpoint> getParserAndUserinfo(String keyId) {
+        return CacheMono.lookup(k -> Mono.justOrEmpty(keyIdAndUserinfoCache.getIfPresent(k)).map(Signal::next),
+                keyId)
+            .onCacheMissResume(Mono.from(doGetParserAndUserinfo(keyId)))
+            .andWriteWith((k, u) -> Mono.fromRunnable(() -> {
+                if (u.hasValue()) {
+                    keyIdAndUserinfoCache.put(k, u.get());
+                }
+            }));
+    }
+
+    private Mono<ParserAndUserinfoEndpoint> doGetParserAndUserinfo(String keyId) {
         return client.get().uri(issuer + "/.well-known/openid-configuration").responseSingle((r, b) -> {
                 if (r.status().code() == 200) {
                     return b.asInputStream();
@@ -155,18 +200,52 @@ public class DefaultAuthenticator implements Authenticator {
                 JwtParserBuilder builder = Jwts.parserBuilder().setSigningKey(pk.value1)
                     .requireIssuer(issuer);
 
-                if (audience != null) {
-                    builder.requireAudience(audience);
-                }
-
-                return new ParserAndUserinfo(builder.build(), pk.value2);
+                return new ParserAndUserinfoEndpoint(builder.build(), pk.value2);
             });
     };
 
     @Override
     public Publisher<AuthkitPrincipal> authenticate(final String token) {
+        return CacheMono.lookup(k -> Mono.justOrEmpty(principalCache.getIfPresent(k)).map(Signal::next),
+            token)
+            .onCacheMissResume(Mono.from(doAuthenticate(token)))
+            .andWriteWith((k, u) -> Mono.fromRunnable(() -> {
+                if (u.hasValue()) {
+                    principalCache.put(k, u.get());
+                }
+            }));
+    }
 
-        return Mono.from(getParserAndUserinfo()).map(j -> {
+    private String validateAndGetKeyId(String token) {
+        var parts = token.split("\\.", 3);
+        // TODO - Check segments
+        if (parts.length != 3) {
+            throw new AuthkitException("invalid jwt");
+        }
+        var headerString = new String(Base64.getDecoder().decode(parts[0]));
+        var header = GSON.fromJson(headerString, MinimalHeader.class);
+        var bodyString = new String(Base64.getDecoder().decode(parts[1]));
+        var body = GSON.fromJson(bodyString, MinimalBody.class);
+
+        if (! issuer.equals(body.iss)) {
+            throw new AuthkitException("invalid issuer");
+        }
+        // TODO - Test this
+        if (audience != null && (! audience.equals(body.aud))) {
+            throw new AuthkitException("invalid audience");
+        }
+        if (header.kid == null) {
+            throw new AuthkitException("header missing kid");
+        }
+        return header.kid;
+    }
+
+
+    public Publisher<AuthkitPrincipal> doAuthenticate(final String token) {
+
+        return Mono.fromCallable(() -> validateAndGetKeyId(token))
+            .flatMap(this::getParserAndUserinfo).map(j -> {
+
             var jws = j.parser.parseClaimsJws(token);
             var claims = jws.getBody();
 

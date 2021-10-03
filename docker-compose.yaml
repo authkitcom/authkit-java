@@ -3,7 +3,7 @@ version: '3.1'
 services:
 
   engine:
-    image: authkit/enginestub:0.6.0
+    image: authkit/enginestub:0.8.0
     restart: always
     environment:
       STUB_HTTP_HOST: 0.0.0.0
