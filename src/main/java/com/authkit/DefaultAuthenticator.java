@@ -6,18 +6,17 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.jsonwebtoken.*;
-import org.reactivestreams.Publisher;
-import reactor.cache.CacheMono;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Signal;
-import reactor.netty.http.client.HttpClient;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.*;
+import org.reactivestreams.Publisher;
+import reactor.cache.CacheMono;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
+import reactor.netty.http.client.HttpClient;
 
 public class DefaultAuthenticator implements Authenticator {
 
@@ -248,9 +247,9 @@ public class DefaultAuthenticator implements Authenticator {
     if (parts.length != 3) {
       throw new AuthkitException("invalid jwt");
     }
-    var headerString = new String(Base64.getDecoder().decode(parts[0]));
+    var headerString = new String(Base64.getUrlDecoder().decode(parts[0]));
     var header = GSON.fromJson(headerString, MinimalHeader.class);
-    var bodyString = new String(Base64.getDecoder().decode(parts[1]));
+    var bodyString = new String(Base64.getUrlDecoder().decode(parts[1]));
     var body = GSON.fromJson(bodyString, MinimalBody.class);
 
     if (!issuer.equals(body.iss)) {

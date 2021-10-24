@@ -4,5 +4,5 @@ import org.reactivestreams.Publisher;
 
 public interface Authenticator {
 
-    Publisher<AuthkitPrincipal> authenticate(String token);
+  Publisher<AuthkitPrincipal> authenticate(String token);
 }
