@@ -7,6 +7,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.jsonwebtoken.*;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -181,7 +183,14 @@ public class DefaultAuthenticator implements Authenticator {
                     "unable to load openid-configuration, code: " + r.status().code());
               }
             })
-        .map(i -> GSON.fromJson(new InputStreamReader(i), OpenIdConfiguration.class))
+        .map(
+            i -> {
+              try {
+                return GSON.fromJson(new InputStreamReader(i), OpenIdConfiguration.class);
+              } finally {
+                close(i);
+              }
+            })
         .flatMap(
             oidc ->
                 client
@@ -199,10 +208,15 @@ public class DefaultAuthenticator implements Authenticator {
                           }
                         })
                     .map(
-                        i ->
-                            new Tuple<>(
+                        i -> {
+                          try {
+                            return new Tuple<>(
                                 GSON.fromJson(new InputStreamReader(i.value1), Jwks.class),
-                                i.value2)))
+                                i.value2);
+                          } finally {
+                            close(i.value1);
+                          }
+                        }))
         .map(
             j -> {
               try {
@@ -306,46 +320,50 @@ public class DefaultAuthenticator implements Authenticator {
                         }))
         .map(
             t -> {
-              var userinfo = GSON.fromJson(new InputStreamReader(t.value1), HashMap.class);
-              var p = t.value2;
+              try {
+                var userinfo = GSON.fromJson(new InputStreamReader(t.value1), HashMap.class);
+                var p = t.value2;
 
-              // TODO - Unit test this
-              if (userinfo != null) {
+                // TODO - Unit test this
+                if (userinfo != null) {
 
-                p.setEmail((String) userinfo.get(CLAIM_EMAIL));
-                p.setEmailVerified((Boolean) userinfo.get(CLAIM_EMAIL_VERIFIED));
-                p.setFamilyName((String) userinfo.get(CLAIM_FAMILY_NAME));
-                p.setGender((String) userinfo.get(CLAIM_GENDER));
-                p.setGivenName((String) userinfo.get(CLAIM_GIVEN_NAME));
-                p.setMiddleName((String) userinfo.get(CLAIM_MIDDLE_NAME));
-                p.setClaimName((String) userinfo.get(CLAIM_NAME));
-                p.setNickname((String) userinfo.get(CLAIM_NICKNAME));
-                p.setPhoneNumber((String) userinfo.get(CLAIM_PHONE_NUMBER));
-                p.setPhoneNumberVerified((Boolean) userinfo.get(CLAIM_PHONE_NUMBER_VERIFIED));
-                p.setPreferredUsername((String) userinfo.get(CLAIM_PREFERRED_USERNAME));
-                p.setUpdatedAt(toLong((Double) userinfo.get(CLAIM_UPDATED_AT)));
-                p.setMetadata(orDefaultMap(userinfo.get(CLAIM_METADATA)));
+                  p.setEmail((String) userinfo.get(CLAIM_EMAIL));
+                  p.setEmailVerified((Boolean) userinfo.get(CLAIM_EMAIL_VERIFIED));
+                  p.setFamilyName((String) userinfo.get(CLAIM_FAMILY_NAME));
+                  p.setGender((String) userinfo.get(CLAIM_GENDER));
+                  p.setGivenName((String) userinfo.get(CLAIM_GIVEN_NAME));
+                  p.setMiddleName((String) userinfo.get(CLAIM_MIDDLE_NAME));
+                  p.setClaimName((String) userinfo.get(CLAIM_NAME));
+                  p.setNickname((String) userinfo.get(CLAIM_NICKNAME));
+                  p.setPhoneNumber((String) userinfo.get(CLAIM_PHONE_NUMBER));
+                  p.setPhoneNumberVerified((Boolean) userinfo.get(CLAIM_PHONE_NUMBER_VERIFIED));
+                  p.setPreferredUsername((String) userinfo.get(CLAIM_PREFERRED_USERNAME));
+                  p.setUpdatedAt(toLong((Double) userinfo.get(CLAIM_UPDATED_AT)));
+                  p.setMetadata(orDefaultMap(userinfo.get(CLAIM_METADATA)));
 
-                if (p.getPermissions().isEmpty()) {
-                  p.setPermissions(orDefaultSet(userinfo.get(CLAIM_PERMISSIONS)));
+                  if (p.getPermissions().isEmpty()) {
+                    p.setPermissions(orDefaultSet(userinfo.get(CLAIM_PERMISSIONS)));
+                  }
+                  if (p.getGroups().isEmpty()) {
+                    p.setGroups(orDefaultSet(userinfo.get(CLAIM_GROUPS)));
+                  }
+                  if (p.getRoles().isEmpty()) {
+                    p.setRoles(orDefaultSet(userinfo.get(CLAIM_ROLES)));
+                  }
+
+                  userinfo.forEach(
+                      (k, v) -> {
+                        var key = (String) k;
+                        if (!RESERVED_CLAIMS.contains(k)) {
+                          p.getExtraClaims().put(key, v);
+                        }
+                      });
                 }
-                if (p.getGroups().isEmpty()) {
-                  p.setGroups(orDefaultSet(userinfo.get(CLAIM_GROUPS)));
-                }
-                if (p.getRoles().isEmpty()) {
-                  p.setRoles(orDefaultSet(userinfo.get(CLAIM_ROLES)));
-                }
 
-                userinfo.forEach(
-                    (k, v) -> {
-                      var key = (String) k;
-                      if (!RESERVED_CLAIMS.contains(k)) {
-                        p.getExtraClaims().put(key, v);
-                      }
-                    });
+                return p;
+              } finally {
+                close(t.value1);
               }
-
-              return p;
             });
   }
 
@@ -388,6 +406,16 @@ public class DefaultAuthenticator implements Authenticator {
       return (Map<String, Object>) input;
     } else {
       return Map.of();
+    }
+  }
+
+  private static void close(InputStream input) {
+    if (input != null) {
+      try {
+        input.close();
+      } catch (IOException e) {
+        // IGNORE
+      }
     }
   }
 }

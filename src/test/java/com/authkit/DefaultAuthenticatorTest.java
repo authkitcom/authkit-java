@@ -21,6 +21,11 @@ import reactor.netty.http.client.HttpClient;
 
 public class DefaultAuthenticatorTest {
 
+  static {
+    System.setProperty("reactor.netty.channel.FluxReceive", "DEBUG");
+    System.setProperty("io.netty.leakDetection.level", "paranoid");
+  }
+
   private static final Gson GSON =
       new GsonBuilder()
           .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
