@@ -1,8 +1,8 @@
 package com.authkit;
 
-import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
 
 public interface Authenticator {
 
-  Publisher<AuthkitPrincipal> authenticate(String token);
+  Mono<AuthkitPrincipal> authenticate(String accessToken);
 }

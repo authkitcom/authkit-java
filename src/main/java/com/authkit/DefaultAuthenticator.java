@@ -7,8 +7,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.jsonwebtoken.*;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -188,7 +186,7 @@ public class DefaultAuthenticator implements Authenticator {
               try {
                 return GSON.fromJson(new InputStreamReader(i), OpenIdConfiguration.class);
               } finally {
-                close(i);
+                Util.close(i);
               }
             })
         .flatMap(
@@ -214,7 +212,7 @@ public class DefaultAuthenticator implements Authenticator {
                                 GSON.fromJson(new InputStreamReader(i.value1), Jwks.class),
                                 i.value2);
                           } finally {
-                            close(i.value1);
+                            Util.close(i.value1);
                           }
                         }))
         .map(
@@ -241,10 +239,10 @@ public class DefaultAuthenticator implements Authenticator {
   ;
 
   @Override
-  public Publisher<AuthkitPrincipal> authenticate(final String token) {
+  public Mono<AuthkitPrincipal> authenticate(final String accessToken) {
     return CacheMono.lookup(
-            k -> Mono.justOrEmpty(principalCache.getIfPresent(k)).map(Signal::next), token)
-        .onCacheMissResume(Mono.from(doAuthenticate(token)))
+            k -> Mono.justOrEmpty(principalCache.getIfPresent(k)).map(Signal::next), accessToken)
+        .onCacheMissResume(Mono.from(doAuthenticate(accessToken)))
         .andWriteWith(
             (k, u) ->
                 Mono.fromRunnable(
@@ -362,7 +360,7 @@ public class DefaultAuthenticator implements Authenticator {
 
                 return p;
               } finally {
-                close(t.value1);
+                Util.close(t.value1);
               }
             });
   }
@@ -406,16 +404,6 @@ public class DefaultAuthenticator implements Authenticator {
       return (Map<String, Object>) input;
     } else {
       return Map.of();
-    }
-  }
-
-  private static void close(InputStream input) {
-    if (input != null) {
-      try {
-        input.close();
-      } catch (IOException e) {
-        // IGNORE
-      }
     }
   }
 }

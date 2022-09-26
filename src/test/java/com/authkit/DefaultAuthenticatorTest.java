@@ -2,9 +2,6 @@ package com.authkit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -21,28 +18,16 @@ import reactor.netty.http.client.HttpClient;
 
 public class DefaultAuthenticatorTest {
 
-  static {
-    System.setProperty("reactor.netty.channel.FluxReceive", "DEBUG");
-    System.setProperty("io.netty.leakDetection.level", "paranoid");
-  }
-
-  private static final Gson GSON =
-      new GsonBuilder()
-          .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-          .create();
-
   private Config config;
   private DefaultAuthenticator unit;
-  private static final String ISSUER = "http://localhost:9996";
-  private static final String AUDIENCE = "test-audience";
 
   @BeforeEach
   public void setUp() {
 
     config = new Config();
 
-    config.setIssuer(ISSUER);
-    config.setAudience(AUDIENCE);
+    config.setIssuer(TestConstants.ISSUER);
+    config.setAudience(TestConstants.AUDIENCE);
 
     unit = new DefaultAuthenticator(config);
   }
@@ -58,7 +43,10 @@ public class DefaultAuthenticatorTest {
     var uri = String.format("http://localhost:9996/authorize?sub=%s&json=true", sub);
 
     if (additionalClaims != null) {
-      uri = uri + "&additional_claims=" + URLEncoder.encode(GSON.toJson(additionalClaims), "UTF-8");
+      uri =
+          uri
+              + "&additional_claims="
+              + URLEncoder.encode(TestConstants.GSON.toJson(additionalClaims), "UTF-8");
     }
 
     var resp =
@@ -73,7 +61,7 @@ public class DefaultAuthenticatorTest {
                     throw new AuthkitException("Unable to get code from server");
                   }
                 })
-            .map(i -> GSON.fromJson(new InputStreamReader(i), Map.class))
+            .map(i -> TestConstants.GSON.fromJson(new InputStreamReader(i), Map.class))
             .block();
 
     String code = (String) resp.get("code");
@@ -81,12 +69,12 @@ public class DefaultAuthenticatorTest {
     var tokenResp =
         client
             .post()
-            .uri(ISSUER + "/oauth/token")
+            .uri(TestConstants.ISSUER + "/oauth/token")
             .sendForm(
                 (r, f) -> {
                   f.attr("grant_type", "authorization_code")
                       .attr("code", code)
-                      .attr("audience", AUDIENCE)
+                      .attr("audience", TestConstants.AUDIENCE)
                       .attr("redirect_uri", "http://localhost:8080");
                 })
             .responseSingle(
@@ -97,7 +85,7 @@ public class DefaultAuthenticatorTest {
                     throw new AuthkitException("Unable to get token from server");
                   }
                 })
-            .map(i -> GSON.fromJson(new InputStreamReader(i), Map.class))
+            .map(i -> TestConstants.GSON.fromJson(new InputStreamReader(i), Map.class))
             .block();
 
     String accessToken = (String) tokenResp.get("access_token");
@@ -112,8 +100,8 @@ public class DefaultAuthenticatorTest {
     var pa = new AuthkitPrincipal();
 
     pa.setSub("a");
-    pa.setIssuer(ISSUER);
-    pa.setAudience(AUDIENCE);
+    pa.setIssuer(TestConstants.ISSUER);
+    pa.setAudience(TestConstants.AUDIENCE);
     pa.setFamilyName("LastA");
     pa.setGivenName("FirstA");
     pa.setEmail("emailA@domain.com");
@@ -121,8 +109,8 @@ public class DefaultAuthenticatorTest {
     var pb = new AuthkitPrincipal();
 
     pb.setSub("b");
-    pb.setIssuer(ISSUER);
-    pb.setAudience(AUDIENCE);
+    pb.setIssuer(TestConstants.ISSUER);
+    pb.setAudience(TestConstants.AUDIENCE);
 
     pb.setEmail("email@domain.com");
     pb.setEmailVerified(true);
@@ -144,8 +132,8 @@ public class DefaultAuthenticatorTest {
     var pa2 = new AuthkitPrincipal();
 
     pa2.setSub("a");
-    pa2.setIssuer(ISSUER);
-    pa2.setAudience(AUDIENCE);
+    pa2.setIssuer(TestConstants.ISSUER);
+    pa2.setAudience(TestConstants.AUDIENCE);
     pa2.setFamilyName("LastA");
     pa2.setGivenName("FirstA");
     pa2.setEmail("emailA@domain.com");

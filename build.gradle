@@ -1,8 +1,9 @@
 plugins {
   id 'java-library'
-  id "com.diffplug.spotless" version "5.16.0"
-  id 'maven'
+  id 'com.diffplug.spotless' version '6.11.0'
   id 'signing'
+  id 'maven-publish'
+  id('io.github.gradle-nexus.publish-plugin') version '1.1.0'
 }
 
 configurations {
@@ -31,33 +32,18 @@ spotless {
   }
 }
 
+java {
+  withJavadocJar()
+  withSourcesJar()
+}
+
 test {
   useJUnitPlatform()
 }
 
-
 repositories {
   mavenCentral()
 }
-
-task javadocJar(type: Jar) {
-  classifier = 'javadoc'
-  from javadoc
-}
-
-task sourcesJar(type: Jar) {
-  classifier = 'sources'
-  from sourceSets.main.allSource
-}
-
-artifacts {
-  archives javadocJar, sourcesJar
-}
-
-signing {
-  sign configurations.archives
-}
-
 
 dependencies {
 
@@ -72,60 +58,56 @@ dependencies {
   implementation group: 'io.projectreactor.addons', name: 'reactor-extra', version: '3.4.5'
   implementation 'com.github.ben-manes.caffeine:caffeine:3.0.4'
 
-  testCompile group: 'org.mockito', name: 'mockito-core', version: '3.2.4'
-  testCompile group: 'org.mockito', name: 'mockito-junit-jupiter', version: '3.2.4'
-  testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
+  testCompileOnly group: 'org.mockito', name: 'mockito-core', version: '3.2.4'
+  testCompileOnly group: 'org.mockito', name: 'mockito-junit-jupiter', version: '3.2.4'
+  testCompileOnly group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
   testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
   testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.15.0'
-  testRuntime group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
+  testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
 
 }
 
-uploadArchives {
+nexusPublishing {
   repositories {
-    mavenDeployer {
-      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+    sonatype()
+  }
+}
 
-      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-        authentication(userName: ossrhUsername, password: ossrhPassword)
-      }
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from(components.java)
+        pom {
+          name = 'authkit-java'
+          description = 'OpenID and JWT client for Java Applications'
+          url = 'https://authkit.com'
+          licenses {
+            license {
+              name = 'The Apache License, Version 2.0'
+              url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+          }
 
-      snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-        authentication(userName: ossrhUsername, password: ossrhPassword)
-      }
-
-      pom.project {
-
-        name 'AuthKit Java Client'
-
-        packaging 'jar'
-
-        description 'OpenID and JWT client for Java Applications'
-        url 'https://authkit.com'
-
-        scm {
-          connection 'scm:git:git://github.com/authkitcom/authkit-java.git'
-          developerConnection 'scm:git:git://github.com/authkitcom/authkit-java.git'
-          url 'https://github.com/authkitcom/authkit-java'
-        }
-
-        licenses {
-          license {
-            name 'The Apache License, Version 2.0'
-            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          developers {
+            developer {
+              id = 'btomasini'
+              name = 'Ben Tomasini'
+              email = 'btomasini@authkit.com'
+            }
+          }
+          scm {
+            connection = 'scm:git:git://github.com/authkitcom/authkit-java.git'
+            developerConnection = 'scm:git:git://github.com/authkitcom/authkit-java.git'
+            url = 'https://github.com/authkitcom/authkit-java'
           }
         }
-
-        developers {
-          developer {
-            id 'btomasini'
-            name 'Ben Tomasini'
-            email 'btomasini@authkit.com'
-          }
-        }
-      }
     }
   }
 }
+
+signing {
+  sign publishing.publications.mavenJava
+}
+
 
 

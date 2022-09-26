@@ -1,5 +1,8 @@
 package com.authkit;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 public final class Util {
 
   public static final <T> T orDefault(T value, T defaultValue) {
@@ -11,5 +14,15 @@ public final class Util {
       throw new IllegalArgumentException(String.format("%s is required", label));
     }
     return value;
+  }
+
+  public static void close(InputStream input) {
+    if (input != null) {
+      try {
+        input.close();
+      } catch (IOException e) {
+        // IGNORE
+      }
+    }
   }
 }

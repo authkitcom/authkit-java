@@ -8,6 +8,7 @@ Features include:
 * Validating an incoming JWT.
 * Creating a default principal
 * Custom translation of a principal for additional logic.
+* Simple, stateless interaction with an authorization server to get tokens.
 
 Items still needing to be done:
 
