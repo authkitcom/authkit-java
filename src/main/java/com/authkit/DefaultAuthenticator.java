@@ -13,12 +13,16 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.*;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.cache.CacheMono;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
 import reactor.netty.http.client.HttpClient;
 
 public class DefaultAuthenticator implements Authenticator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
   /*
   TODO - unit test missing audience / mismatch audience
@@ -265,10 +269,12 @@ public class DefaultAuthenticator implements Authenticator {
     var body = GSON.fromJson(bodyString, MinimalBody.class);
 
     if (!issuer.equals(body.iss)) {
+      LOGGER.error("invalid issuer, expecting {}, got {}", issuer, body.iss);
       throw new AuthkitException("invalid issuer");
     }
     // TODO - Test this
     if (audience != null && (!audience.equals(body.aud))) {
+      LOGGER.error("invalid audience, expecting {}, got {}", audience, body.aud);
       throw new AuthkitException("invalid audience");
     }
     if (header.kid == null) {
