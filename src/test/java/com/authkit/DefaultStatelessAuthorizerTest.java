@@ -33,7 +33,7 @@ public class DefaultStatelessAuthorizerTest {
 
     assertThat(got)
         .isEqualTo(
-            "http://localhost:9996/authorize?response_type=code&client_id=test+client+id&redirect_uri=http%3A%2F%2Fsomehost%3A1234%3Ffoo%3Dbar%26baz%3Dblah%23frag");
+            "http://localhost:9996/authorize?response_type=code&client_id=test+client+id&redirect_uri=http%3A%2F%2Fsomehost%3A1234%3Ffoo%3Dbar%26baz%3Dblah%23frag&scope=scope1+scope2&nonce=test+nonce&code_challenge=code+challenge&code_challenge_method=S256&prompt=none");
   }
 
   @Test
