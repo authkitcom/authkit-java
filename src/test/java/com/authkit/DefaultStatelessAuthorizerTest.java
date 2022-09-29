@@ -92,6 +92,7 @@ public class DefaultStatelessAuthorizerTest {
 
     var tokenParams = new FetchTokensParameters();
 
+    tokenParams.setClientId("test");
     tokenParams.setCode(code);
     tokenParams.setRedirectUri(redirectUri);
     tokenParams.setCodeVerifier(verifier);

@@ -74,12 +74,16 @@ public class DefaultStatelessAuthorizer implements StatelessAuthorizer {
         .uri(tokenEndpoint)
         .sendForm(
             (r, f) -> {
-              f.attr("grant_type", "authorization_code")
+              f.attr("client_id", params.getClientId())
+                  .attr("grant_type", "authorization_code")
                   .attr("code", params.getCode())
                   .attr("redirect_uri", params.getRedirectUri());
 
               if (params.getCodeVerifier() != null) {
                 f.attr("code_verifier", params.getCodeVerifier());
+              }
+              if (params.getClientSecret() != null) {
+                f.attr("client_secret", params.getClientSecret());
               }
             })
         .responseSingle(
