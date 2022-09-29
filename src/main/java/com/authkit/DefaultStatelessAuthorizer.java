@@ -54,9 +54,9 @@ public class DefaultStatelessAuthorizer implements StatelessAuthorizer {
     }
     if (params.getCodeChallenge() != null) {
       sb.append("&code_challenge");
-      sb.append(urlEncode(params.getNonce()));
+      sb.append(urlEncode(params.getCodeChallenge()));
       sb.append("&code_challenge_method");
-      sb.append(requireURLEncoded(params.getNonce(), "codeChallengeMethod"));
+      sb.append(requireURLEncoded(params.getCodeChallengeMethod(), "codeChallengeMethod"));
     }
     if (params.getPrompt() != null) {
       sb.append("&prompt=");
