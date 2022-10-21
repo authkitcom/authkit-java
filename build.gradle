@@ -114,6 +114,13 @@ publishing {
   }
 }
 
+release {
+    afterReleaseBuild.dependsOn publish
+    git {
+      requireBranch.set('')
+    }
+}
+
 signing {
   sign publishing.publications.mavenJava
 }

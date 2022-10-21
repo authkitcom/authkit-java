@@ -35,9 +35,6 @@ jobs:
         uses: crazy-max/ghaction-import-gpg@v1
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-      - name: Waiting for containers - eventually make a health check
-        run: |
-          sleep 10
       - name: Environment Setup
         run: |
           git config --global user.email "release@authkit.com"
