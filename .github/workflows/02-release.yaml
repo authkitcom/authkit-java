@@ -16,7 +16,7 @@ jobs:
           STUB_HTTP_HOST: 0.0.0.0
           STUB_URL: http://localhost:9996
         ports:
-          - 8080:9996
+          - 9996:8080
     steps:
       - name: Check the deployed service URL
         uses: jtalk/url-health-check-action@v2
