@@ -9,15 +9,18 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    services:
-      engine:
-        image: authkit/enginestub:0.10.0
-        env:
-          STUB_HTTP_HOST: 0.0.0.0
-          STUB_URL: http://localhost:9996
-        ports:
-          - 9996:8080
+      #services:
+      #engine:
+      #  image: authkit/enginestub:0.10.0
+      #  env:
+      #    STUB_HTTP_HOST: 0.0.0.0
+      #    STUB_URL: http://localhost:9996
+      #  ports:
+      #    - 9996:8080
     steps:
+      - name: Run dev containers
+        run: |
+          docker-compose up -d
       - name: Check the deployed service URL
         uses: jtalk/url-health-check-action@v2
         with:
