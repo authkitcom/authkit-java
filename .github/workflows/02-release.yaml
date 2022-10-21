@@ -17,7 +17,7 @@ jobs:
           STUB_URL: http://localhost:9996
           STUB_USERS: /etc/users.json
         volumes:
-          - ./users.json:/etc/users.json
+          - users.json:/etc/users.json
         ports:
           - 9996:8080
     steps:
