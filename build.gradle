@@ -1,8 +1,15 @@
+buildscript {
+    repositories { 
+        mavenCentral()
+    }
+}
+
 plugins {
   id 'java-library'
-  id 'com.diffplug.spotless' version '6.11.0'
-  id 'signing'
   id 'maven-publish'
+  id 'signing'
+  id 'net.researchgate.release' version '2.8.1'
+  id 'com.diffplug.spotless' version '6.11.0'
   id('io.github.gradle-nexus.publish-plugin') version '1.1.0'
 }
 
@@ -21,18 +28,18 @@ sourceSets {
   }
 }
 
-sourceCompatibility = 11
-targetCompatibility = 11
-group = 'com.authkit'
-version = version
-
 spotless {
- java {
+  java {
+    target 'src/**/*.java'
+    importOrder()
+    removeUnusedImports()
     googleJavaFormat()
   }
 }
 
 java {
+  sourceCompatibility = JavaVersion.toVersion("11")
+  targetCompatibility = JavaVersion.toVersion("11")
   withJavadocJar()
   withSourcesJar()
 }
