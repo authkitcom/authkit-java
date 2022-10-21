@@ -19,7 +19,7 @@ jobs:
         volumes:
           - users.json:/etc/users.json
         ports:
-          - 9996:8080
+          - 8080:9996
     steps:
       - name: Import GPG Key
         uses: crazy-max/ghaction-import-gpg@v1
